@@ -1,0 +1,39 @@
+# ── Environment ───────────────────────────────
+.env
+.env.local
+
+# ── Node / Next.js ────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+
+# ── Java / Gradle ─────────────────────────────
+atlas-api/.gradle/
+atlas-api/build/
+*.class
+*.jar
+
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ── Proto generated stubs ─────────────────────
+atlas-ai/proto/*_pb2.py
+atlas-ai/proto/*_pb2_grpc.py
+atlas-ai/proto/*_pb2.pyi
+atlas-api/src/main/java/com/atlas/api/grpc/
+
+# ── IDEs ──────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Cloned repos ──────────────────────────────
+atlas-ai/tmp/

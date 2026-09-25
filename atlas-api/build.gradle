@@ -1,0 +1,115 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'    version '3.3.0'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'com.google.protobuf'         version '0.9.4'
+}
+
+group   = 'com.atlas'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    grpcVersion     = '1.63.0'
+    protobufVersion = '3.25.3'
+    jgraphtVersion  = '1.5.2'
+    mapstructVersion = '1.5.5.Final'
+    lombokVersion   = '1.18.32'
+}
+
+dependencies {
+
+    // ── Spring Boot Starters ─────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+
+    // ── Database ─────────────────────────────────────────────────────────
+    runtimeOnly  'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // ── gRPC ─────────────────────────────────────────────────────────────
+    implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    compileOnly    'jakarta.annotation:jakarta.annotation-api:2.1.1'
+
+    // ── Graph Algorithms (Change Impact BFS) ─────────────────────────────
+    implementation "org.jgrapht:jgrapht-core:${jgraphtVersion}"
+
+    // ── GitHub API Client ────────────────────────────────────────────────
+    implementation 'org.kohsuke:github-api:1.321'
+
+    // ── Code Quality: Lombok + MapStruct ─────────────────────────────────
+    compileOnly              "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor      "org.projectlombok:lombok:${lombokVersion}"
+    implementation           "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor      "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    // Lombok must come before MapStruct in annotation processors
+    annotationProcessor      "org.projectlombok:lombok-mapstruct-binding:0.2.0"
+
+    // ── Testing ──────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.batch:spring-batch-test'
+}
+
+// ── Protobuf / gRPC code generation ──────────────────────────────────────────
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+// Point protoc at the shared proto directory in the repo root
+sourceSets {
+    main {
+        proto {
+            srcDir '../proto'
+        }
+        java {
+            // Include generated proto sources
+            srcDirs 'build/generated/source/proto/main/grpc'
+            srcDirs 'build/generated/source/proto/main/java'
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Ensure proto generation runs before compilation
+compileJava.dependsOn generateProto

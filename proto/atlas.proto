@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package atlas;
+
+option java_multiple_files = true;
+option java_package = "com.atlas.api.grpc";
+option java_outer_classname = "AtlasProto";
+
+// ═══════════════════════════════════════════════════════════════════
+//  SHARED DOMAIN MESSAGES
+// ═══════════════════════════════════════════════════════════════════
+
+// Represents a single parseable unit of code: function, class, file, route, or test.
+message CodeNode {
+  string id         = 1; // unique: "{repo_id}::{file_path}::{name}:{line}"
+  string name       = 2; // function/class/file name
+  string type       = 3; // "function" | "class" | "file" | "route" | "test"
+  string file_path  = 4; // relative path from repo root
+  int32  start_line = 5;
+  int32  end_line   = 6;
+  string language   = 7; // "python" | "typescript" | "javascript"
+  string signature  = 8; // e.g. "def calculate_price(item: Item) -> Decimal"
+}
+
+// Represents a directed relationship between two code nodes.
+message CodeEdge {
+  string from_id    = 1; // CodeNode.id of the caller/importer
+  string to_id      = 2; // CodeNode.id of the callee/imported
+  string edge_type  = 3; // "calls" | "imports" | "extends" | "implements"
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERVICE 1: AstParserService
+//  Parses a repository or single file into a graph of CodeNodes and CodeEdges.
+//  Called by Spring Boot after cloning a GitHub repo.
+// ═══════════════════════════════════════════════════════════════════
+service AstParserService {
+  // Parse an entire repository directory into a full code graph.
+  rpc ParseRepository (ParseRequest)     returns (ParseResponse);
+
+  // Parse a single file's content (used for incremental updates / PR diffs).
+  rpc ParseFile       (FileParseRequest) returns (FileParseResponse);
+}
+
+message ParseRequest {
+  string   repo_id   = 1; // UUID of the repo (for node ID namespacing)
+  string   repo_path = 2; // absolute path to the locally cloned repo
+  repeated string languages = 3; // e.g. ["python", "typescript"]
+}
+
+message ParseResponse {
+  string   repo_id      = 1;
+  repeated CodeNode nodes = 2;
+  repeated CodeEdge edges = 3;
+  int32    total_files  = 4;
+  int32    total_nodes  = 5;
+  int32    total_edges  = 6;
+}
+
+message FileParseRequest {
+  string repo_id      = 1;
+  string file_path    = 2; // relative path (for node ID generation)
+  string language     = 3;
+  string file_content = 4; // raw source code
+}
+
+message FileParseResponse {
+  repeated CodeNode nodes = 1;
+  repeated CodeEdge edges = 2;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERVICE 2: EmbeddingService
+//  Generates vector embeddings for code nodes and stores them in pgvector.
+//  Also provides semantic similarity search over stored embeddings.
+// ═══════════════════════════════════════════════════════════════════
+service EmbeddingService {
+  // Embed a batch of code nodes and write vectors to pgvector.
+  rpc EmbedNodes    (EmbedRequest)  returns (EmbedResponse);
+
+  // Run cosine-similarity search to find nodes relevant to a natural language query.
+  rpc SearchSimilar (SearchRequest) returns (SearchResponse);
+}
+
+// A single item to embed: node ID paired with its text representation.
+message EmbedItem {
+  string node_id = 1; // must match an existing code_nodes.id in Postgres
+  string text    = 2; // text to embed: name + signature + file path
+}
+
+message EmbedRequest {
+  string   repo_id      = 1;
+  repeated EmbedItem items = 2;
+}
+
+message EmbedResponse {
+  bool  success        = 1;
+  int32 embedded_count = 2;
+  string error_message = 3; // populated only on failure
+}
+
+message SearchRequest {
+  string repo_id = 1;
+  string query   = 2; // natural language, e.g. "checkout flow"
+  int32  top_k   = 3; // number of results to return (default 20)
+}
+
+// A single search result with relevance score.
+message SearchResult {
+  string node_id   = 1;
+  string node_name = 2;
+  string node_type = 3;
+  string file_path = 4;
+  float  score     = 5; // cosine similarity [0, 1], higher = more relevant
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERVICE 3: LlmQueryService
+//  Answers natural language questions about a codebase,
+//  grounded in the code graph context.
+//  Also finds visual feature paths (e.g. "checkout flow" → ordered node list).
+// ═══════════════════════════════════════════════════════════════════
+service LlmQueryService {
+  // Stream an LLM answer grounded in the provided graph context nodes.
+  // Uses gRPC server-side streaming — each message is one token chunk.
+  // Spring Boot bridges this stream to a WebSocket session.
+  rpc QueryWithContext (LlmRequest)     returns (stream LlmChunk);
+
+  // Find which code nodes form the path for a natural language feature description.
+  // e.g. "checkout flow" → [CheckoutPage, useCheckout, /api/checkout, OrderService, DB]
+  rpc FindFeaturePath  (FeatureRequest) returns (FeaturePathResponse);
+}
+
+message LlmRequest {
+  string   repo_id          = 1;
+  string   question         = 2; // e.g. "What does calculatePrice() do?"
+  repeated string context_node_ids = 3; // node IDs to inject as grounded context
+}
+
+// A single streaming token chunk from the LLM.
+message LlmChunk {
+  string token    = 1; // one or more characters from the LLM output
+  bool   is_final = 2; // true on the last chunk — signals stream end
+}
+
+message FeatureRequest {
+  string repo_id     = 1;
+  string description = 2; // e.g. "checkout flow", "user authentication"
+}
+
+message FeaturePathResponse {
+  repeated string node_ids    = 1; // ordered list of node IDs forming the path
+  repeated string node_names  = 2; // human-readable names (parallel to node_ids)
+  string          explanation = 3; // LLM-generated explanation of the path
+}

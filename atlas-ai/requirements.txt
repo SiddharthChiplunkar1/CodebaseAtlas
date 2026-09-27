@@ -1,13 +1,14 @@
 # ── gRPC ─────────────────────────────────────────────────────────────────────
 grpcio==1.63.0
 grpcio-tools==1.63.0
-protobuf==4.25.3
+protobuf>=5.26.1
 
 # ── AST Parsing ───────────────────────────────────────────────────────────────
 tree-sitter==0.22.3
 tree-sitter-python==0.21.0
 tree-sitter-typescript==0.21.2
 tree-sitter-javascript==0.21.4
+tree-sitter-java==0.21.0
 
 # ── Graph Construction ────────────────────────────────────────────────────────
 networkx==3.3

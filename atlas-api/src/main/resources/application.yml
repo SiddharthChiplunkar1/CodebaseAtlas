@@ -63,13 +63,15 @@ server:
   servlet:
     context-path: /
 
+# ── gRPC Client Configuration ─────────────────────────────────────────────────
+grpc:
+  client:
+    atlas-ai:
+      address: 'static://${ATLAS_AI_GRPC_HOST:localhost}:${ATLAS_AI_GRPC_PORT:50051}'
+      negotiation-type: plaintext
+
 # ── Atlas custom properties ───────────────────────────────────────────────────
 atlas:
-  # gRPC connection to the Python AI service
-  ai:
-    grpc:
-      host: ${ATLAS_AI_GRPC_HOST:localhost}
-      port: ${ATLAS_AI_GRPC_PORT:50051}
   # GitHub API token for repo metadata fetching (personal access token)
   github:
     api-token: ${GITHUB_API_TOKEN:}

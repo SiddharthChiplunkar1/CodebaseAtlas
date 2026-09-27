@@ -3,8 +3,8 @@ package com.atlas.api.infrastructure.grpc;
 import com.atlas.api.domain.dtos.out.ParseResult;
 import com.atlas.api.domain.model.CodeEdge;
 import com.atlas.api.domain.model.CodeNode;
-import com.atlas.api.domain.model.enums.EdgeType;
-import com.atlas.api.domain.model.enums.NodeType;
+import com.atlas.api.domain.enums.EdgeType;
+import com.atlas.api.domain.enums.Type;
 import com.atlas.api.domain.port.out.AstParserPort;
 import com.atlas.api.grpc.AstParserServiceGrpc;
 import com.atlas.api.grpc.AtlasProto;
@@ -37,7 +37,7 @@ public class AstParserGrpcAdapter implements AstParserPort {
                         .repoId(UUID.fromString(repoId))
                         .nodeKey(n.getId())
                         .name(n.getName())
-                        .type(NodeType.valueOf(n.getType().toUpperCase()))
+                        .type(Type.valueOf(n.getType().toUpperCase()))
                         .filePath(n.getFilePath())
                         .startLine(n.getStartLine())
                         .endLine(n.getEndLine())

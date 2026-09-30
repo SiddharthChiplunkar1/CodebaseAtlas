@@ -15,6 +15,12 @@ networkx==3.3
 
 # ── AI / Embeddings / LLM ─────────────────────────────────────────────────────
 openai==1.35.0
+# OpenAI 1.35.0 passes the legacy `proxies` argument removed in httpx 0.28.
+httpx==0.27.2
+sentence-transformers==3.0.1
+# The service runs on CPU in the supplied container; avoid pulling CUDA/NVIDIA wheels.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
 
 # ── Database (pgvector) ───────────────────────────────────────────────────────
 psycopg2-binary==2.9.9

@@ -34,8 +34,8 @@ class CodeNode(Base):
     language = Column(String(50))
     signature = Column(Text)
     
-    # Critical: This uses pgvector to store 1536-dimensional embeddings from OpenAI
-    embedding = Column(Vector(1536))
+    # all-MiniLM-L6-v2 produces 384-dimensional vectors.
+    embedding = Column(Vector(384))
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

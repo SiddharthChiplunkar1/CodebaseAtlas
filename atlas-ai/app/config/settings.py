@@ -26,13 +26,13 @@ class Settings(BaseSettings):
     )
 
     # ── LLM / Embeddings ─────────────────────────────────────────────────────
-    openai_api_key: str = Field(..., description="OpenAI API key for embeddings and LLM")
+    groq_api_key: str = Field(..., description="Groq API key for LLM")
     openai_embedding_model: str = Field(
         default="text-embedding-ada-002",
         description="OpenAI model to use for code embeddings"
     )
     openai_chat_model: str = Field(
-        default="gpt-4o",
+        default="llama3-8b-8192",
         description="OpenAI model to use for LLM Q&A and feature path finding"
     )
     openai_embedding_batch_size: int = Field(

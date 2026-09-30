@@ -2,6 +2,8 @@ package com.atlas.api.infrastructure.batch.step;
 
 import com.atlas.api.domain.dtos.out.ParseResult;
 import com.atlas.api.domain.port.out.AstParserPort;
+import com.atlas.api.domain.port.out.CodeEdgeRepository;
+import com.atlas.api.domain.port.out.CodeNodeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepContribution;
@@ -16,6 +18,8 @@ import org.springframework.stereotype.Component;
 public class ParseAstTasklet implements Tasklet {
 
     private final AstParserPort astParserPort;
+    private final CodeNodeRepository nodeRepository;
+    private final CodeEdgeRepository edgeRepository;
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
@@ -26,13 +30,18 @@ public class ParseAstTasklet implements Tasklet {
         log.info("Parsing AST for repoId {} at path {}", repoId, repoPath);
 
         ParseResult result = astParserPort.parseRepository(repoId, repoPath);
-        
-        log.info("Parsing completed. Found {} nodes and {} edges.", 
+
+        log.info("Parsing completed. Found {} nodes and {} edges.",
             result.getCodeNodes().size(), result.getCodeEdges().size());
 
-        // Store result in execution context for next steps
-        chunkContext.getStepContext().getStepExecution().getJobExecution()
-                .getExecutionContext().put("parseResult", result);
+        // Persist immediately — do NOT put into ExecutionContext (too large for Batch serialization)
+        log.info("Persisting {} nodes to database...", result.getCodeNodes().size());
+        nodeRepository.saveAll(result.getCodeNodes());
+
+        log.info("Persisting {} edges to database...", result.getCodeEdges().size());
+        edgeRepository.saveAll(result.getCodeEdges());
+
+        log.info("Graph persistence completed.");
 
         return RepeatStatus.FINISHED;
     }

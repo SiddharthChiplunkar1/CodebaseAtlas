@@ -12,6 +12,8 @@ import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,11 +32,11 @@ public class AstParserGrpcAdapter implements AstParserPort {
                 
         AtlasProto.ParseResponse response = parserStub.parseRepository(request);
         
+        UUID repositoryId = UUID.fromString(repoId);
         List<CodeNode> nodes = response.getNodesList().stream()
                 .map(n -> CodeNode.builder()
-                        // Ensure generated string ID works or we map it differently.
-                        // Assuming Python returns standard string, but our CodeNode wants a nodeKey.
-                        .repoId(UUID.fromString(repoId))
+                        .id(toUuid(n.getId()))
+                        .repoId(repositoryId)
                         .nodeKey(n.getId())
                         .name(n.getName())
                         .type(Type.valueOf(n.getType().toUpperCase()))
@@ -45,20 +47,35 @@ public class AstParserGrpcAdapter implements AstParserPort {
                         .signature(n.getSignature())
                         .build())
                 .collect(Collectors.toList());
+
+        Map<String, UUID> nodeIds = nodes.stream()
+                .collect(Collectors.toMap(CodeNode::getNodeKey, CodeNode::getId));
                 
         List<CodeEdge> edges = response.getEdgesList().stream()
-                .map(e -> CodeEdge.builder()
-                        .repoId(UUID.fromString(repoId))
-                        // We will resolve UUIDs of from/to later in the batch job.
-                        // For now we could store string references. 
-                        // But domain expects UUIDs. This implies edge resolution happens after node insertion.
-                        .edgeType(EdgeType.valueOf(e.getEdgeType().toUpperCase()))
-                        .build())
+                .map(e -> {
+                    UUID from = nodeIds.get(e.getFromId());
+                    UUID to = nodeIds.get(e.getToId());
+                    if (from == null || to == null) {
+                        throw new IllegalStateException("Parser returned an edge to an unknown node: "
+                                + e.getFromId() + " -> " + e.getToId());
+                    }
+                    return CodeEdge.builder()
+                            .id(toUuid(repoId + "::" + e.getFromId() + "::" + e.getToId() + "::" + e.getEdgeType()))
+                            .repoId(repositoryId)
+                            .fromNodeId(from)
+                            .toNodeId(to)
+                            .edgeType(EdgeType.valueOf(e.getEdgeType().toUpperCase()))
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return ParseResult.builder()
                 .codeNodes(nodes)
                 .codeEdges(edges)
                 .build();
+    }
+
+    private static UUID toUuid(String value) {
+        return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 }

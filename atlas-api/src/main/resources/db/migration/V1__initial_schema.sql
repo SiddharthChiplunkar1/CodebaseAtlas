@@ -24,7 +24,7 @@ CREATE TABLE code_nodes (
     end_line INTEGER,
     language VARCHAR(50),
     signature TEXT,
-    embedding vector(1536),
+    embedding vector(384),
     created_at TIMESTAMP,
     UNIQUE (repo_id, node_key)
 );

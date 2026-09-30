@@ -10,8 +10,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies into a target directory for copying
-COPY requirements.txt .
+COPY atlas-ai/requirements.txt requirements.txt
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Generate the Python gRPC bindings from the single shared contract.
+COPY proto/ /proto/
+RUN mkdir -p /install-proto/proto && \
+    PYTHONPATH=/install/lib/python3.12/site-packages \
+    python -m grpc_tools.protoc -I/proto \
+      --python_out=/install-proto/proto \
+      --grpc_python_out=/install-proto/proto \
+      /proto/atlas.proto
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -26,12 +35,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Non-root user for security
-RUN useradd -m -u 1001 atlas
-USER atlas
+# Run as root to avoid docker volume permission issues
+# RUN useradd -m -u 1001 atlas
+# USER atlas
 
 # Copy application source
-COPY --chown=atlas:atlas . .
+COPY --chown=atlas:atlas atlas-ai/ /app/atlas-ai/
+COPY --from=builder /install-proto/proto /app/atlas-ai/proto
+
+WORKDIR /app/atlas-ai
 
 EXPOSE 50051
 

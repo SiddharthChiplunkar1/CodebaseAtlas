@@ -4,7 +4,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 
 # Connects to the postgres instance defined in docker-compose or local
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas")
+DATABASE_URL = os.getenv(
+    "POSTGRES_URL",
+    os.getenv("DATABASE_URL", "postgresql://atlas:atlas_secret@localhost:5432/atlas"),
+)
 
 # Engine initialization
 engine = create_engine(

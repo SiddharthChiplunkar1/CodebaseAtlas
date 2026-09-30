@@ -1,32 +1,26 @@
-import os
 import logging
 from typing import List
-from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     def __init__(self, api_key: str = None):
-        key = api_key or os.getenv("OPENAI_API_KEY")
-        if not key:
-            logger.warning("OPENAI_API_KEY is not set. Embedding calls will fail.")
-        self.client = OpenAI(api_key=key)
-        self.model = "text-embedding-3-small"
+        logger.info("Initializing SentenceTransformer embedding model (all-MiniLM-L6-v2)...")
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
-        Generates embeddings for a list of text strings using OpenAI.
+        Generates embeddings for a list of text strings using a local SentenceTransformer model.
         """
         if not texts:
             return []
 
         try:
-            response = self.client.embeddings.create(
-                input=texts,
-                model=self.model
-            )
-            # OpenAI returns the embeddings in the same order as the input
-            return [data.embedding for data in response.data]
+            # Output is a numpy array of shape (len(texts), 384)
+            embeddings = self.model.encode(texts, show_progress_bar=False)
+            # Convert to list of floats for pgvector insertion
+            return [emb.tolist() for emb in embeddings]
         except Exception as e:
             logger.error(f"Failed to generate embeddings: {e}")
             raise

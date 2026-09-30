@@ -11,5 +11,6 @@ public interface CodeNodeMapper {
     CodeNode toDomain(CodeNodeEntity entity);
 
     @Mapping(source = "repoId", target = "repoEntity.id")
+    @Mapping(target = "createdAt", ignore = true)
     CodeNodeEntity toEntity(CodeNode domain);
 }

@@ -10,12 +10,16 @@ logger = logging.getLogger(__name__)
 
 class LlmService:
     def __init__(self, api_key: str = None):
-        key = api_key or os.getenv("OPENAI_API_KEY")
+        from app.config.settings import settings
+        key = api_key or settings.groq_api_key
         if not key:
-            logger.warning("OPENAI_API_KEY is not set. LLM calls will fail.")
-        self.client = OpenAI(api_key=key)
+            logger.warning("API Key is not set. LLM calls will fail.")
+        self.client = OpenAI(
+            api_key=key,
+            base_url="https://api.groq.com/openai/v1"
+        )
         self.embedding_service = EmbeddingService(api_key=key)
-        self.model = "gpt-4o"
+        self.model = settings.openai_chat_model
 
     def search_codebase(self, db: Session, repo_id: str, query: str, limit: int = 5) -> List[CodeNode]:
         """

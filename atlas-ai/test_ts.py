@@ -3,7 +3,7 @@ from tree_sitter import Language, Parser
 
 lang = Language(tspython.language())
 parser = Parser()
-parser.set_language(lang)
+parser.language = lang
 
 code = b"""
 class MyClass:

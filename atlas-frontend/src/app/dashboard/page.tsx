@@ -312,6 +312,7 @@ export default function Dashboard() {
             ) : (
               <div style={{ width: '100%', height: '100%' }}>
                 <ReactFlow 
+                  key={viewMode}
                   nodes={nodes} 
                   edges={edges} 
                   onNodesChange={onNodesChange}

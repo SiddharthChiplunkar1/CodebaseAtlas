@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { IconLogout, IconMap2, IconFolder, IconSearch, IconChartNetwork, IconMessageCode } from "@tabler/icons-react";
+import { IconLogout, IconMap2, IconFolder, IconSearch, IconNetwork, IconMessageCode } from "@tabler/icons-react";
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -62,7 +62,7 @@ export default function Dashboard() {
             <IconFolder size={20} color="#57606a" /> My Repositories
           </a>
           <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '6px', color: '#57606a', textDecoration: 'none', fontWeight: 500, marginBottom: '0.5rem' }}>
-            <IconChartNetwork size={20} /> Code Graph
+            <IconNetwork size={20} /> Code Graph
           </a>
           <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '6px', color: '#57606a', textDecoration: 'none', fontWeight: 500, marginBottom: '0.5rem' }}>
             <IconSearch size={20} /> Semantic Search

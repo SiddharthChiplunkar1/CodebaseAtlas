@@ -9,6 +9,7 @@ import "reactflow/dist/style.css";
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isGraphLoading, setIsGraphLoading] = useState(false);
 
   // Graph State
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -63,6 +64,7 @@ export default function Dashboard() {
     let pollingInterval: NodeJS.Timeout;
 
     const fetchGraph = () => {
+      setIsGraphLoading(true);
       fetch(`http://localhost:8080/api/v1/repos/${activeRepository.id}/graph`, { credentials: "include" })
       .then(res => res.json())
       .then(graphData => {
@@ -118,33 +120,40 @@ export default function Dashboard() {
           }))
           .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
 
-        // Deep clone edges for d3 so it doesn't mutate the ReactFlow edge objects
-        const d3Edges = rfEdges.map(e => ({ ...e }));
+        // Yield to the event loop so the loading spinner can render before the heavy D3 calculation
+        setTimeout(() => {
+          // Deep clone edges for d3 so it doesn't mutate the ReactFlow edge objects
+          const d3Edges = rfEdges.map(e => ({ ...e }));
 
-        // Use D3 Force Directed Graph to statically compute a beautiful organic layout
-        const simulation = d3.forceSimulation(rfNodes)
-          .force("charge", d3.forceManyBody().strength(-400))
-          .force("center", d3.forceCenter(0, 0))
-          .force("collide", d3.forceCollide().radius(80))
-          .force("link", d3.forceLink(d3Edges).id((d: any) => d.id).distance(100));
+          // Use D3 Force Directed Graph to statically compute a beautiful organic layout
+          const simulation = d3.forceSimulation(rfNodes)
+            .force("charge", d3.forceManyBody().strength(-400))
+            .force("center", d3.forceCenter(0, 0))
+            .force("collide", d3.forceCollide().radius(80))
+            .force("link", d3.forceLink(d3Edges).id((d: any) => d.id).distance(100));
 
-        // Fast-forward the simulation to its end state
-        simulation.tick(300);
+          // Fast-forward the simulation to its end state
+          simulation.tick(300);
 
-        rfNodes.forEach((node: any) => {
-          node.position = { x: node.x, y: node.y };
-          // Remove d3 properties to avoid contaminating ReactFlow state
-          delete node.x;
-          delete node.y;
-          delete node.vx;
-          delete node.vy;
-          delete node.index;
-        });
+          rfNodes.forEach((node: any) => {
+            node.position = { x: node.x, y: node.y };
+            // Remove d3 properties to avoid contaminating ReactFlow state
+            delete node.x;
+            delete node.y;
+            delete node.vx;
+            delete node.vy;
+            delete node.index;
+          });
 
-        setNodes(rfNodes);
-        setEdges(rfEdges);
+          setNodes(rfNodes);
+          setEdges(rfEdges);
+          setIsGraphLoading(false);
+        }, 50);
       })
-      .catch(err => console.error("Failed to load graph", err));
+      .catch(err => {
+        console.error("Failed to load graph", err);
+        setIsGraphLoading(false);
+      });
     };
 
     if (activeRepository.status === 'READY') {
@@ -360,6 +369,12 @@ export default function Dashboard() {
                 <div style={{ color: '#cf222e', marginBottom: '1rem' }}><IconX size={48} /></div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#24292f' }}>Parsing Failed</h3>
                 <p style={{ color: '#57606a', marginTop: '0.5rem' }}>Atlas encountered an error while parsing this repository.</p>
+              </div>
+            ) : isGraphLoading ? (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>
+                <div style={{ width: '40px', height: '40px', border: '3px solid #e1e4e8', borderTopColor: '#0969da', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1rem' }}></div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#24292f' }}>Rendering Architecture...</h3>
+                <p style={{ color: '#57606a', marginTop: '0.5rem' }}>Computing force-directed cluster layout.</p>
               </div>
             ) : nodes.length === 0 ? (
               <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>

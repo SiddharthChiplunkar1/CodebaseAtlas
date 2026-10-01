@@ -28,6 +28,7 @@ public class User {
     @Column(name = "avatar_url")
     private String avatarUrl;
     
+    @JsonIgnore
     @Column(name = "access_token")
     private String accessToken;
 

@@ -77,14 +77,14 @@ public class AuthController {
         cookie.setSecure(false); // In production with HTTPS, set to true
         cookie.setPath("/");
         cookie.setMaxAge(86400); // 1 day
+        cookie.setAttribute("SameSite", "Lax"); // Prevent CSRF attacks
         response.addCookie(cookie);
 
         User user = userRepository.findByEmail(request.email()).orElseThrow();
         return ResponseEntity.ok(Map.of(
             "name", user.getUsername(),
             "login", user.getUsername(),
-            "avatar_url", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
-            "token", jwt // Also return it in body just in case the frontend prefers Bearer token
+            "avatar_url", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
         ));
     }
 

@@ -17,9 +17,9 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // In a real app, this should be injected from environment variables, 
-    // but for demonstration we'll use a securely generated static key.
-    private static final String SECRET_KEY = "AtlasSuperSecretKeyForJwtAuthenticationWhichNeedsToBeVeryLong";
+    @Value("${jwt.secret:AtlasSuperSecretKeyForJwtAuthenticationWhichNeedsToBeVeryLongAndSecure}")
+    private String secretKey;
+    
     private static final long JWT_EXPIRATION = 86400000; // 1 day
 
     public String extractUsername(String token) {
@@ -67,6 +67,6 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 }

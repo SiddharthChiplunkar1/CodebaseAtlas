@@ -59,72 +59,92 @@ export default function Dashboard() {
   useEffect(() => {
     if (!activeRepository) return;
 
-    fetch(`http://localhost:8080/api/v1/repos/${activeRepository.id}/graph`, { credentials: "include" })
-    .then(res => res.json())
-    .then(graphData => {
-      if (!graphData.nodes) return;
-      
-      // Deduplicate nodes by name (e.g. "itsdangerous" appearing multiple times)
-      const uniqueNodesMap = new Map();
-      const idReplacements = new Map();
+    let pollingInterval: NodeJS.Timeout;
 
-      graphData.nodes.forEach((n: any) => {
-        if (!uniqueNodesMap.has(n.name)) {
-          uniqueNodesMap.set(n.name, n);
-          idReplacements.set(n.id, n.id);
-        } else {
-          // Point duplicate ID to the original node ID
-          idReplacements.set(n.id, uniqueNodesMap.get(n.name).id);
-        }
-      });
-
-      const deduplicatedNodes = Array.from(uniqueNodesMap.values());
-      
-      // Filter based on viewMode
-      const filteredNodes = deduplicatedNodes.filter((n: any) => {
-        if (viewMode === "classes") return n.type === "CLASS" || n.type === "INTERFACE";
-        if (viewMode === "services") return n.type === "CLASS" && n.name.toLowerCase().includes("service");
-        return true;
-      });
-
-      const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
-
-      // Transform backend nodes to ReactFlow nodes
-      const rfNodes = filteredNodes.map((n: any, i: number) => {
-        // Assign color based on type
-        let bg = "#f6f8fa"; let border = "#d0d7de"; let color = "#24292f";
-        if (n.type === "CLASS" || n.type === "FILE") { bg = "#fdf4ff"; border = "#f0abfc"; color = "#86198f"; }
-        if (n.type === "INTERFACE") { bg = "#e1effe"; border = "#76a9fa"; color = "#1e429f"; }
+    const fetchGraph = () => {
+      fetch(`http://localhost:8080/api/v1/repos/${activeRepository.id}/graph`, { credentials: "include" })
+      .then(res => res.json())
+      .then(graphData => {
+        if (!graphData.nodes) return;
         
-        return {
-          id: n.id,
-          type: "default",
-          data: { label: n.name, fullData: n },
-          // Simple grid layout
-          position: { x: (i % 5) * 200 + 50, y: Math.floor(i / 5) * 150 + 50 },
-          style: { background: bg, color: color, border: `1px solid ${border}`, borderRadius: "8px", fontWeight: 600, padding: "10px" }
-        };
-      });
+        // Deduplicate nodes by name
+        const uniqueNodesMap = new Map();
+        const idReplacements = new Map();
 
-      // Transform backend edges to ReactFlow edges
-      const rfEdges = graphData.edges
-        .map((e: any, i: number) => ({
-          id: `e-${i}`,
-          source: idReplacements.get(e.source), // Use deduplicated source
-          target: idReplacements.get(e.target), // Use deduplicated target
-          edgeType: e.edgeType,
-          animated: true,
-          style: { stroke: '#9ca3af' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' }
-        }))
-        // Filter out edges that point to themselves, or to nodes not in the current view
-        .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
+        graphData.nodes.forEach((n: any) => {
+          if (!uniqueNodesMap.has(n.name)) {
+            uniqueNodesMap.set(n.name, n);
+            idReplacements.set(n.id, n.id);
+          } else {
+            idReplacements.set(n.id, uniqueNodesMap.get(n.name).id);
+          }
+        });
 
-      setNodes(rfNodes);
-      setEdges(rfEdges);
-    })
-    .catch(err => console.error("Failed to load graph", err));
-  }, [activeRepository, viewMode, setNodes, setEdges]);
+        const deduplicatedNodes = Array.from(uniqueNodesMap.values());
+        
+        // Filter based on viewMode
+        const filteredNodes = deduplicatedNodes.filter((n: any) => {
+          if (viewMode === "classes") return n.type === "CLASS" || n.type === "INTERFACE";
+          if (viewMode === "services") return n.type === "CLASS" && n.name.toLowerCase().includes("service");
+          return true;
+        });
+
+        const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+
+        const rfNodes = filteredNodes.map((n: any, i: number) => {
+          let bg = "#f6f8fa"; let border = "#d0d7de"; let color = "#24292f";
+          if (n.type === "CLASS" || n.type === "FILE") { bg = "#fdf4ff"; border = "#f0abfc"; color = "#86198f"; }
+          if (n.type === "INTERFACE") { bg = "#e1effe"; border = "#76a9fa"; color = "#1e429f"; }
+          
+          return {
+            id: n.id,
+            type: "default",
+            data: { label: n.name, fullData: n },
+            position: { x: (i % 5) * 200 + 50, y: Math.floor(i / 5) * 150 + 50 },
+            style: { background: bg, color: color, border: `1px solid ${border}`, borderRadius: "8px", fontWeight: 600, padding: "10px" }
+          };
+        });
+
+        const rfEdges = graphData.edges
+          .map((e: any, i: number) => ({
+            id: `e-${i}`,
+            source: idReplacements.get(e.source),
+            target: idReplacements.get(e.target),
+            edgeType: e.edgeType,
+            animated: true,
+            style: { stroke: '#9ca3af' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' }
+          }))
+          .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
+
+        setNodes(rfNodes);
+        setEdges(rfEdges);
+      })
+      .catch(err => console.error("Failed to load graph", err));
+    };
+
+    if (activeRepository.status === 'READY') {
+      fetchGraph();
+    } else if (activeRepository.status === 'PENDING') {
+      // Poll repository status every 5 seconds
+      pollingInterval = setInterval(() => {
+        fetch(`http://localhost:8080/api/v1/repos/${activeRepository.id}`, { credentials: "include" })
+        .then(res => res.json())
+        .then(repo => {
+          if (repo.status === 'READY' || repo.status === 'FAILED') {
+            clearInterval(pollingInterval);
+            // Update repo in list and active state
+            setRepos(prev => prev.map(r => r.id === repo.id ? repo : r));
+            setActiveRepository(repo);
+          }
+        });
+      }, 5000);
+    }
+
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [activeRepository, viewMode, setNodes, setEdges, setRepos]);
 
   const handleLogout = async () => {
     try {

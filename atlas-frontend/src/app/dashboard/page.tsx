@@ -127,14 +127,14 @@ export default function Dashboard() {
         // Yield to the event loop so the loading spinner can render before the heavy D3 calculation
         setTimeout(() => {
           // Deep clone edges for d3 so it doesn't mutate the ReactFlow edge objects
-          const d3Edges = rfEdges.map(e => ({ ...e }));
+          const d3Edges = rfEdges.map((e: any) => ({ ...e }));
 
           // Use D3 Force Directed Graph to statically compute a beautiful organic layout
-          const simulation = d3.forceSimulation(rfNodes)
+          const simulation = d3.forceSimulation(rfNodes as any)
             .force("charge", d3.forceManyBody().strength(-400))
             .force("center", d3.forceCenter(0, 0))
             .force("collide", d3.forceCollide().radius(80))
-            .force("link", d3.forceLink(d3Edges).id((d: any) => d.id).distance(100));
+            .force("link", d3.forceLink(d3Edges as any).id((d: any) => d.id).distance(100));
 
           // Fast-forward the simulation to its end state
           simulation.tick(300);
@@ -328,9 +328,12 @@ export default function Dashboard() {
         </div>
         
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.4rem 0.75rem' }}>
+          <div 
+            onClick={() => window.location.href = '/coming-soon'} 
+            style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.4rem 0.75rem', cursor: 'pointer' }}
+          >
             <IconSearch size={16} color="#8c959f" />
-            <input type="text" placeholder="Search repository... ⌘K" style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem', marginLeft: '0.5rem' }} />
+            <input type="text" placeholder="Search repository... ⌘K" style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem', marginLeft: '0.5rem', cursor: 'pointer' }} readOnly />
           </div>
         </div>
 
@@ -371,7 +374,7 @@ export default function Dashboard() {
             <button onClick={() => setViewMode("services")} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', backgroundColor: viewMode === 'services' ? 'var(--hover)' : 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: viewMode === 'services' ? 600 : 500, fontSize: '0.9rem' }}>
               <IconCpu size={18} /> Services Diagram
             </button>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', color: '#57606a', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 500, fontSize: '0.9rem' }}>
+            <button onClick={() => window.location.href = '/coming-soon'} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', color: '#57606a', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 500, fontSize: '0.9rem' }}>
               <IconBrandOpenai size={18} /> Ask Atlas
             </button>
           </div>

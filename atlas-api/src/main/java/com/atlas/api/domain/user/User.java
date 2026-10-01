@@ -6,6 +6,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.UUID;
 
 @Entity
@@ -20,6 +21,8 @@ public class User {
     
     private String username;
     private String email;
+    
+    @JsonIgnore
     private String password;
     
     @Column(name = "avatar_url")

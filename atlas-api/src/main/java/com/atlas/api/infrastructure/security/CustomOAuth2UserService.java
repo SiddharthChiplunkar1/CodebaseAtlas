@@ -26,7 +26,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String email = oAuth2User.getAttribute("email");
         String login = oAuth2User.getAttribute("login");
         String avatarUrl = oAuth2User.getAttribute("avatar_url");
-        String githubId = String.valueOf(oAuth2User.getAttribute("id"));
+        String githubId = String.valueOf((Object) oAuth2User.getAttribute("id"));
         
         if (email == null) {
             // Some users hide their email on GitHub, use login as fallback

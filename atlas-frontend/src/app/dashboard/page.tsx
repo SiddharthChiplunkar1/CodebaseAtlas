@@ -157,11 +157,23 @@ export default function Dashboard() {
     e.preventDefault();
     setImportError("");
     setIsImporting(true);
+    
+    // Auto-format GitHub URLs to just owner/repo
+    let formattedName = repoFullName.trim();
+    if (formattedName.includes('github.com/')) {
+      formattedName = formattedName.split('github.com/')[1];
+    }
+    if (formattedName.endsWith('.git')) {
+      formattedName = formattedName.slice(0, -4);
+    }
+    // Remove any trailing slashes or path segments after the repo name
+    formattedName = formattedName.split('/').slice(0, 2).join('/');
+
     try {
       const res = await fetch("http://localhost:8080/api/v1/repos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: repoFullName, accessToken: githubToken }),
+        body: JSON.stringify({ fullName: formattedName, accessToken: githubToken }),
         credentials: "include"
       });
       if (!res.ok) {

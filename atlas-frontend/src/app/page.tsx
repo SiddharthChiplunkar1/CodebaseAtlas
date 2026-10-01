@@ -8,6 +8,53 @@ import { IconMap2, IconBuildingCommunity, IconArrowRight, IconGitMerge, IconLayo
 
 export default function LandingPage() {
   const [isLogin, setIsLogin] = useState(false);
+  
+  // Form State
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Registration failed");
+      }
+      // Registration success, switch to login
+      setIsLogin(true);
+      setError("");
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include"
+      });
+      if (!res.ok) {
+        throw new Error("Invalid email or password");
+      }
+      // Login success, redirect to dashboard
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   return (
     <div className="landing-container">
@@ -130,23 +177,24 @@ export default function LandingPage() {
                   <h2>Get started</h2>
                 </div>
                 
-                <form>
+                <form onSubmit={handleRegister}>
+                  {error && !isLogin && <div style={{ color: 'red', fontSize: '0.9rem', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
                   <div className="form-group-container">
                     <div className="form-line"></div>
                     
                     <div className="form-group">
                       <div className="form-dot"></div>
-                      <input type="text" placeholder="Username" />
+                      <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required />
                     </div>
                     
                     <div className="form-group">
                       <div className="form-dot"></div>
-                      <input type="email" placeholder="Email address" />
+                      <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
                     </div>
                     
                     <div className="form-group">
                       <div className="form-dot-hollow"></div>
-                      <input type="password" placeholder="Password" />
+                      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
                     </div>
                   </div>
 
@@ -154,7 +202,7 @@ export default function LandingPage() {
                     Make sure it's at least 15 characters. <Link href="#">Learn more</Link>.
                   </div>
 
-                  <button type="button" className="submit-btn">
+                  <button type="submit" className="submit-btn">
                     Sign up for Atlas
                   </button>
 
@@ -184,22 +232,23 @@ export default function LandingPage() {
                   <h2>Welcome back</h2>
                 </div>
                 
-                <form>
+                <form onSubmit={handleLogin}>
+                  {error && isLogin && <div style={{ color: 'red', fontSize: '0.9rem', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
                   <div className="form-group-container">
                     <div className="form-line" style={{height: '40px'}}></div>
                     
                     <div className="form-group">
                       <div className="form-dot"></div>
-                      <input type="email" placeholder="Email address" />
+                      <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
                     </div>
                     
                     <div className="form-group">
                       <div className="form-dot-hollow"></div>
-                      <input type="password" placeholder="Password" />
+                      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
                     </div>
                   </div>
 
-                  <button type="button" className="submit-btn" style={{marginTop: '2rem'}}>
+                  <button type="submit" className="submit-btn" style={{marginTop: '2rem'}}>
                     Sign in to Atlas
                   </button>
 

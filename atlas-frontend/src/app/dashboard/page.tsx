@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { IconLogout, IconMap2, IconSearch, IconNetwork, IconDatabase, IconCode, IconCpu, IconBrandOpenai, IconSparkles, IconX } from "@tabler/icons-react";
+import { IconLogout, IconMap2, IconSearch, IconNetwork, IconDatabase, IconCode, IconCpu, IconBrandOpenai, IconSparkles, IconX, IconBrandGithub } from "@tabler/icons-react";
 import ReactFlow, { Background, Controls, MiniMap, useNodesState, useEdgesState, MarkerType } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -53,6 +53,9 @@ export default function Dashboard() {
   
   // Selection State
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  
+  // Repository State
+  const [activeRepository, setActiveRepository] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch authenticated user
@@ -144,38 +147,77 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* 2. CENTER PANEL: Interactive Graph */}
+      {/* 2. CENTER PANEL: Interactive Graph OR Empty State */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <header style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 10, background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Codebase Graph</div>
-          <div style={{ height: '16px', width: '1px', backgroundColor: 'var(--border)' }}></div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#e1effe', color: '#1e429f', fontWeight: 600 }}>API Routes</span>
-            <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#fdf4ff', color: '#86198f', fontWeight: 600 }}>Services</span>
-            <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#ecfdf5', color: '#065f46', fontWeight: 600 }}>Database</span>
+          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+            {activeRepository ? `Codebase Graph: ${activeRepository}` : 'No Repository Selected'}
           </div>
+          {activeRepository && (
+            <>
+              <div style={{ height: '16px', width: '1px', backgroundColor: 'var(--border)' }}></div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#e1effe', color: '#1e429f', fontWeight: 600 }}>API Routes</span>
+                <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#fdf4ff', color: '#86198f', fontWeight: 600 }}>Services</span>
+                <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#ecfdf5', color: '#065f46', fontWeight: 600 }}>Database</span>
+              </div>
+            </>
+          )}
         </header>
 
-        <div style={{ width: '100%', height: '100%' }}>
-          <ReactFlow 
-            nodes={nodes} 
-            edges={edges} 
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            onPaneClick={() => setSelectedNode(null)}
-            fitView
-            attributionPosition="bottom-right"
-          >
-            <Background color="#ccc" gap={16} />
-            <Controls />
-            <MiniMap style={{ border: '1px solid #d0d7de', borderRadius: '8px' }} />
-          </ReactFlow>
-        </div>
+        {activeRepository ? (
+          <div style={{ width: '100%', height: '100%' }}>
+            <ReactFlow 
+              nodes={nodes} 
+              edges={edges} 
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodeClick={onNodeClick}
+              onPaneClick={() => setSelectedNode(null)}
+              fitView
+              attributionPosition="bottom-right"
+            >
+              <Background color="#ccc" gap={16} />
+              <Controls />
+              <MiniMap style={{ border: '1px solid #d0d7de', borderRadius: '8px' }} />
+            </ReactFlow>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>
+            <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: 'white', borderRadius: '12px', border: '1px dashed #d0d7de', maxWidth: '500px' }}>
+              <IconMap2 size={48} color="#d0d7de" style={{ marginBottom: '1.5rem' }} />
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.75rem', color: '#24292f' }}>Awaiting Repository</h2>
+              <p style={{ color: '#57606a', marginBottom: '2rem', lineHeight: 1.6 }}>
+                Connect your GitHub account or paste a repository URL to begin parsing the codebase. Atlas will extract symbols, classes, and dependencies to generate your interactive map.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => setActiveRepository("codebase-atlas")}
+                  style={{
+                    backgroundColor: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px 0 rgba(9, 105, 218, 0.39)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <IconBrandGithub size={18} /> Connect GitHub
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* 3. RIGHT PANEL: Inspector / AI Analysis */}
-      {selectedNode && (
+      {activeRepository && selectedNode && (
         <aside style={{ width: '300px', backgroundColor: 'white', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', zIndex: 10, boxShadow: '-4px 0 16px rgba(0,0,0,0.03)' }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: '1rem' }}>Inspector</div>

@@ -118,12 +118,15 @@ export default function Dashboard() {
           }))
           .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
 
+        // Deep clone edges for d3 so it doesn't mutate the ReactFlow edge objects
+        const d3Edges = rfEdges.map(e => ({ ...e }));
+
         // Use D3 Force Directed Graph to statically compute a beautiful organic layout
         const simulation = d3.forceSimulation(rfNodes)
-          .force("charge", d3.forceManyBody().strength(-1500))
+          .force("charge", d3.forceManyBody().strength(-400))
           .force("center", d3.forceCenter(0, 0))
-          .force("collide", d3.forceCollide().radius(120))
-          .force("link", d3.forceLink(rfEdges).id((d: any) => d.id).distance(250));
+          .force("collide", d3.forceCollide().radius(80))
+          .force("link", d3.forceLink(d3Edges).id((d: any) => d.id).distance(100));
 
         // Fast-forward the simulation to its end state
         simulation.tick(300);

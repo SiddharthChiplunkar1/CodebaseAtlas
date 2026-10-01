@@ -44,7 +44,9 @@ export default function Dashboard() {
     .then(repoData => {
       setRepos(repoData);
       if (repoData && repoData.length > 0) {
-        setActiveRepository(repoData[0]);
+        // Auto-select the first READY repository, or just the first one
+        const readyRepo = repoData.find((r: any) => r.status === 'READY');
+        setActiveRepository(readyRepo || repoData[0]);
       }
       setLoading(false);
     })
@@ -196,13 +198,17 @@ export default function Dashboard() {
                 key={r.id} 
                 onClick={() => setActiveRepository(r)}
                 style={{ 
-                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '4px', fontSize: '0.85rem', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', borderRadius: '4px', fontSize: '0.85rem', 
                   backgroundColor: activeRepository?.id === r.id ? '#e1effe' : 'transparent',
                   color: activeRepository?.id === r.id ? '#1e429f' : '#57606a',
                   border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: activeRepository?.id === r.id ? 600 : 400
                 }}
               >
-                <IconCode size={16} /> {r.name}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <IconCode size={16} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{r.name}</span>
+                </div>
+                {r.status === 'PENDING' && <span style={{ fontSize: '0.65rem', backgroundColor: '#fff8c5', color: '#9a6700', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>SYNCING</span>}
+                {r.status === 'FAILED' && <span style={{ fontSize: '0.65rem', backgroundColor: '#ffebe9', color: '#cf222e', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>ERROR</span>}
               </button>
             ))}
           </div>
@@ -253,22 +259,42 @@ export default function Dashboard() {
                 <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '12px', background: '#fdf4ff', color: '#86198f', fontWeight: 600 }}>Services</span>
               </div>
             </header>
-            <div style={{ width: '100%', height: '100%' }}>
-              <ReactFlow 
-                nodes={nodes} 
-                edges={edges} 
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onPaneClick={() => setSelectedNode(null)}
-                fitView
-                attributionPosition="bottom-right"
-              >
-                <Background color="#ccc" gap={16} />
-                <Controls />
-                <MiniMap style={{ border: '1px solid #d0d7de', borderRadius: '8px' }} />
-              </ReactFlow>
-            </div>
+            
+            {activeRepository.status === 'PENDING' ? (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>
+                <div style={{ width: '40px', height: '40px', border: '3px solid #e1e4e8', borderTopColor: '#0969da', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1rem' }}></div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#24292f' }}>Parsing Codebase...</h3>
+                <p style={{ color: '#57606a', marginTop: '0.5rem' }}>Atlas is currently traversing the AST and extracting graph nodes.</p>
+              </div>
+            ) : activeRepository.status === 'FAILED' ? (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>
+                <div style={{ color: '#cf222e', marginBottom: '1rem' }}><IconX size={48} /></div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#24292f' }}>Parsing Failed</h3>
+                <p style={{ color: '#57606a', marginTop: '0.5rem' }}>Atlas encountered an error while parsing this repository.</p>
+              </div>
+            ) : nodes.length === 0 ? (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#24292f' }}>No nodes found</h3>
+                <p style={{ color: '#57606a', marginTop: '0.5rem' }}>This architecture view is empty for the current codebase.</p>
+              </div>
+            ) : (
+              <div style={{ width: '100%', height: '100%' }}>
+                <ReactFlow 
+                  nodes={nodes} 
+                  edges={edges} 
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onNodeClick={onNodeClick}
+                  onPaneClick={() => setSelectedNode(null)}
+                  fitView
+                  attributionPosition="bottom-right"
+                >
+                  <Background color="#ccc" gap={16} />
+                  <Controls />
+                  <MiniMap style={{ border: '1px solid #d0d7de', borderRadius: '8px' }} />
+                </ReactFlow>
+              </div>
+            )}
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f8fa' }}>

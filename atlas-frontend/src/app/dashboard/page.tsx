@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { IconLogout, IconMap2, IconSearch, IconNetwork, IconDatabase, IconCode, IconCpu, IconBrandOpenai, IconSparkles, IconX, IconBrandGithub, IconPlus } from "@tabler/icons-react";
+import * as d3 from 'd3-force';
 import ReactFlow, { Background, Controls, MiniMap, useNodesState, useEdgesState, MarkerType } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -112,10 +113,30 @@ export default function Dashboard() {
             target: idReplacements.get(e.target),
             edgeType: e.edgeType,
             animated: true,
-            style: { stroke: '#9ca3af' },
+            style: { stroke: '#9ca3af', opacity: 1 },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' }
           }))
           .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
+
+        // Use D3 Force Directed Graph to statically compute a beautiful organic layout
+        const simulation = d3.forceSimulation(rfNodes)
+          .force("charge", d3.forceManyBody().strength(-1500))
+          .force("center", d3.forceCenter(0, 0))
+          .force("collide", d3.forceCollide().radius(120))
+          .force("link", d3.forceLink(rfEdges).id((d: any) => d.id).distance(250));
+
+        // Fast-forward the simulation to its end state
+        simulation.tick(300);
+
+        rfNodes.forEach((node: any) => {
+          node.position = { x: node.x, y: node.y };
+          // Remove d3 properties to avoid contaminating ReactFlow state
+          delete node.x;
+          delete node.y;
+          delete node.vx;
+          delete node.vy;
+          delete node.index;
+        });
 
         setNodes(rfNodes);
         setEdges(rfEdges);
@@ -145,6 +166,39 @@ export default function Dashboard() {
       if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [activeRepository, viewMode, setNodes, setEdges, setRepos]);
+
+  // Handle Graph Interaction Highlighting
+  useEffect(() => {
+    if (!selectedNode) {
+      // Reset opacities
+      setNodes((nds) => nds.map((n) => ({ ...n, style: { ...n.style, opacity: 1 } })));
+      setEdges((eds) => eds.map((e) => ({ ...e, style: { ...e.style, opacity: 1 } })));
+      return;
+    }
+
+    // Highlight only the selected node and its direct neighbors
+    const neighborIds = new Set([selectedNode.id]);
+    edges.forEach(e => {
+      if (e.source === selectedNode.id) neighborIds.add(e.target);
+      if (e.target === selectedNode.id) neighborIds.add(e.source);
+    });
+
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      style: { ...n.style, opacity: neighborIds.has(n.id) ? 1 : 0.15 }
+    })));
+
+    setEdges((eds) => eds.map((e) => ({
+      ...e,
+      style: { 
+        ...e.style, 
+        opacity: (e.source === selectedNode.id || e.target === selectedNode.id) ? 1 : 0.05,
+        stroke: (e.source === selectedNode.id || e.target === selectedNode.id) ? '#0969da' : '#9ca3af',
+        strokeWidth: (e.source === selectedNode.id || e.target === selectedNode.id) ? 2 : 1
+      },
+      markerEnd: { type: MarkerType.ArrowClosed, color: (e.source === selectedNode.id || e.target === selectedNode.id) ? '#0969da' : '#9ca3af' }
+    })));
+  }, [selectedNode, setNodes, setEdges]);
 
   const handleLogout = async () => {
     try {

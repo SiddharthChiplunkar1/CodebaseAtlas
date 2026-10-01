@@ -1,10 +1,14 @@
 "use client";
 
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import { IconMap2, IconBuildingCommunity, IconArrowRight, IconGitMerge, IconLayoutDashboard, IconRipple, IconSearch, IconMessageCode, IconBrandGithub, IconBrandGoogle } from "@tabler/icons-react";
 
 export default function LandingPage() {
+  const [isLogin, setIsLogin] = useState(false);
+
   return (
     <div className="landing-container">
       <header className="header">
@@ -117,61 +121,104 @@ export default function LandingPage() {
         </div>
 
         <div className="hero-form-container">
-          <div className="signup-card-wrapper">
-            <div className="signup-card-shadow"></div>
-            <div className="signup-card">
-              <div className="signup-header">
-                <IconGitMerge size={24} />
-                <h2>Get started</h2>
+          <div className="card-stack-container">
+            {/* SIGN UP CARD */}
+            <div className={`auth-card ${!isLogin ? 'front' : 'back'}`}>
+              <div className="card-content">
+                <div className="signup-header">
+                  <IconGitMerge size={24} />
+                  <h2>Get started</h2>
+                </div>
+                
+                <form>
+                  <div className="form-group-container">
+                    <div className="form-line"></div>
+                    
+                    <div className="form-group">
+                      <div className="form-dot"></div>
+                      <input type="text" placeholder="Username" />
+                    </div>
+                    
+                    <div className="form-group">
+                      <div className="form-dot"></div>
+                      <input type="email" placeholder="Email address" />
+                    </div>
+                    
+                    <div className="form-group">
+                      <div className="form-dot-hollow"></div>
+                      <input type="password" placeholder="Password" />
+                    </div>
+                  </div>
+
+                  <div className="password-hint">
+                    Make sure it's at least 15 characters. <Link href="#">Learn more</Link>.
+                  </div>
+
+                  <button type="button" className="submit-btn">
+                    Sign up for Atlas
+                  </button>
+
+                  <div className="oauth-divider">
+                    <span>or continue with</span>
+                  </div>
+
+                  <div className="oauth-buttons">
+                    <a href="http://localhost:8080/oauth2/authorization/github" className="oauth-btn github" style={{textDecoration: 'none'}}>
+                      <IconBrandGithub size={20} />
+                      GitHub
+                    </a>
+                  </div>
+
+                  <div className="terms-text" style={{fontSize: '0.85rem'}}>
+                    Already have an account? <span onClick={() => setIsLogin(true)} style={{color: '#0969da', cursor: 'pointer', fontWeight: 600}}>Sign in</span>
+                  </div>
+                </form>
               </div>
-              
-              <form>
-                <div className="form-group-container">
-                  <div className="form-line"></div>
-                  
-                  <div className="form-group">
-                    <div className="form-dot"></div>
-                    <input type="text" placeholder="Username" />
-                  </div>
-                  
-                  <div className="form-group">
-                    <div className="form-dot"></div>
-                    <input type="email" placeholder="Email address" />
-                  </div>
-                  
-                  <div className="form-group">
-                    <div className="form-dot-hollow"></div>
-                    <input type="password" placeholder="Password" />
-                  </div>
+            </div>
+
+            {/* SIGN IN CARD */}
+            <div className={`auth-card ${isLogin ? 'front' : 'back'}`}>
+              <div className="card-content">
+                <div className="signup-header">
+                  <IconLayoutDashboard size={24} />
+                  <h2>Welcome back</h2>
                 </div>
+                
+                <form>
+                  <div className="form-group-container">
+                    <div className="form-line" style={{height: '40px'}}></div>
+                    
+                    <div className="form-group">
+                      <div className="form-dot"></div>
+                      <input type="email" placeholder="Email address" />
+                    </div>
+                    
+                    <div className="form-group">
+                      <div className="form-dot-hollow"></div>
+                      <input type="password" placeholder="Password" />
+                    </div>
+                  </div>
 
-                <div className="password-hint">
-                  Make sure it's at least 15 characters OR at least 8 characters including a number and a lowercase letter. <Link href="#">Learn more</Link>.
-                </div>
-
-                <button type="button" className="submit-btn">
-                  Sign up for Atlas
-                </button>
-
-                <div className="oauth-divider">
-                  <span>or continue with</span>
-                </div>
-
-                <div className="oauth-buttons">
-                  <button type="button" className="oauth-btn github">
-                    <IconBrandGithub size={20} />
-                    GitHub
+                  <button type="button" className="submit-btn" style={{marginTop: '2rem'}}>
+                    Sign in to Atlas
                   </button>
-                  <button type="button" className="oauth-btn google">
-                    <IconBrandGoogle size={20} />
-                    Google
-                  </button>
-                </div>
 
-                <div className="terms-text">
-                  By clicking "Sign up for Atlas", you agree to our Terms of Service and Privacy Statement. We'll occasionally send you account related emails.
-                </div>
-              </form>
+                  <div className="oauth-divider">
+                    <span>or continue with</span>
+                  </div>
+
+                  <div className="oauth-buttons">
+                    <a href="http://localhost:8080/oauth2/authorization/github" className="oauth-btn github" style={{textDecoration: 'none'}}>
+                      <IconBrandGithub size={20} />
+                      GitHub
+                    </a>
+                  </div>
+
+                  <div className="terms-text" style={{fontSize: '0.85rem'}}>
+                    Don't have an account? <span onClick={() => setIsLogin(false)} style={{color: '#0969da', cursor: 'pointer', fontWeight: 600}}>Sign up</span>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>

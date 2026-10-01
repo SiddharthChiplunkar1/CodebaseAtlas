@@ -20,6 +20,9 @@ export default function Dashboard() {
   const [repos, setRepos] = useState<any[]>([]);
   const [activeRepository, setActiveRepository] = useState<any>(null);
 
+  // View State (all, classes, services)
+  const [viewMode, setViewMode] = useState<string>("all");
+
   // Import Repo Form State
   const [isImporting, setIsImporting] = useState(false);
   const [repoFullName, setRepoFullName] = useState("");
@@ -59,8 +62,33 @@ export default function Dashboard() {
     .then(graphData => {
       if (!graphData.nodes) return;
       
+      // Deduplicate nodes by name (e.g. "itsdangerous" appearing multiple times)
+      const uniqueNodesMap = new Map();
+      const idReplacements = new Map();
+
+      graphData.nodes.forEach((n: any) => {
+        if (!uniqueNodesMap.has(n.name)) {
+          uniqueNodesMap.set(n.name, n);
+          idReplacements.set(n.id, n.id);
+        } else {
+          // Point duplicate ID to the original node ID
+          idReplacements.set(n.id, uniqueNodesMap.get(n.name).id);
+        }
+      });
+
+      const deduplicatedNodes = Array.from(uniqueNodesMap.values());
+      
+      // Filter based on viewMode
+      const filteredNodes = deduplicatedNodes.filter((n: any) => {
+        if (viewMode === "classes") return n.type === "CLASS" || n.type === "INTERFACE";
+        if (viewMode === "services") return n.type === "CLASS" && n.name.toLowerCase().includes("service");
+        return true;
+      });
+
+      const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+
       // Transform backend nodes to ReactFlow nodes
-      const rfNodes = graphData.nodes.map((n: any, i: number) => {
+      const rfNodes = filteredNodes.map((n: any, i: number) => {
         // Assign color based on type
         let bg = "#f6f8fa"; let border = "#d0d7de"; let color = "#24292f";
         if (n.type === "CLASS" || n.type === "FILE") { bg = "#fdf4ff"; border = "#f0abfc"; color = "#86198f"; }
@@ -70,27 +98,31 @@ export default function Dashboard() {
           id: n.id,
           type: "default",
           data: { label: n.name, fullData: n },
-          // Very simple grid layout since backend doesn't provide X/Y
+          // Simple grid layout
           position: { x: (i % 5) * 200 + 50, y: Math.floor(i / 5) * 150 + 50 },
           style: { background: bg, color: color, border: `1px solid ${border}`, borderRadius: "8px", fontWeight: 600, padding: "10px" }
         };
       });
 
       // Transform backend edges to ReactFlow edges
-      const rfEdges = graphData.edges.map((e: any, i: number) => ({
-        id: `e-${i}`,
-        source: e.source,
-        target: e.target,
-        animated: true,
-        style: { stroke: '#9ca3af' },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' }
-      }));
+      const rfEdges = graphData.edges
+        .map((e: any, i: number) => ({
+          id: `e-${i}`,
+          source: idReplacements.get(e.source), // Use deduplicated source
+          target: idReplacements.get(e.target), // Use deduplicated target
+          edgeType: e.edgeType,
+          animated: true,
+          style: { stroke: '#9ca3af' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' }
+        }))
+        // Filter out edges that point to themselves, or to nodes not in the current view
+        .filter((e: any) => e.source !== e.target && filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
 
       setNodes(rfNodes);
       setEdges(rfEdges);
     })
     .catch(err => console.error("Failed to load graph", err));
-  }, [activeRepository, setNodes, setEdges]);
+  }, [activeRepository, viewMode, setNodes, setEdges]);
 
   const handleLogout = async () => {
     try {
@@ -177,15 +209,18 @@ export default function Dashboard() {
 
           <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#57606a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Architecture Views</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', backgroundColor: 'var(--hover)', color: 'var(--foreground)', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
-              <IconNetwork size={18} /> System Map
-            </a>
-            <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', color: '#57606a', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem' }}>
-              <IconCpu size={18} /> Services
-            </a>
-            <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', color: '#57606a', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem' }}>
+            <button onClick={() => setViewMode("all")} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', backgroundColor: viewMode === 'all' ? 'var(--hover)' : 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: viewMode === 'all' ? 600 : 500, fontSize: '0.9rem' }}>
+              <IconNetwork size={18} /> System Map (All)
+            </button>
+            <button onClick={() => setViewMode("classes")} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', backgroundColor: viewMode === 'classes' ? 'var(--hover)' : 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: viewMode === 'classes' ? 600 : 500, fontSize: '0.9rem' }}>
+              <IconCode size={18} /> Class Diagram
+            </button>
+            <button onClick={() => setViewMode("services")} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', backgroundColor: viewMode === 'services' ? 'var(--hover)' : 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: viewMode === 'services' ? 600 : 500, fontSize: '0.9rem' }}>
+              <IconCpu size={18} /> Services Diagram
+            </button>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', color: '#57606a', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 500, fontSize: '0.9rem' }}>
               <IconBrandOpenai size={18} /> Ask Atlas
-            </a>
+            </button>
           </div>
         </nav>
 

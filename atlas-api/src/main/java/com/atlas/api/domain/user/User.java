@@ -5,25 +5,36 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    
+    @Column(name = "github_id")
+    private String githubId;
     
     private String username;
     private String email;
     private String password;
+    
+    @Column(name = "avatar_url")
     private String avatarUrl;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    
+    @Column(name = "access_token")
+    private String accessToken;
 
     public User() {}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    
+    public String getGithubId() { return githubId; }
+    public void setGithubId(String githubId) { this.githubId = githubId; }
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -37,6 +48,6 @@ public class User {
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 }

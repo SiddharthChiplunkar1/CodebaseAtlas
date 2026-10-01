@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { IconBug } from "@tabler/icons-react";
+import GraphBackground from "@/components/ui/GraphBackground";
 
 export default function Error({
   error,
@@ -28,15 +29,7 @@ export default function Error({
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Decorative background graph */}
-      <svg width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, opacity: 0.02, pointerEvents: 'none' }}>
-        <defs>
-          <pattern id="error-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#error-grid)" />
-      </svg>
+      <GraphBackground />
 
       <div style={{
         textAlign: 'center',
@@ -62,15 +55,16 @@ export default function Error({
         }}>
           <IconBug size={40} color="#cf222e" />
         </div>
-        <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.04em', color: '#24292f' }}>
-          500
-        </h1>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#24292f' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em', color: '#24292f' }}>
           System Malfunction
-        </h2>
-        <p style={{ color: '#57606a', marginBottom: '2rem', lineHeight: 1.6 }}>
+        </h1>
+        <p style={{ color: '#57606a', marginBottom: '1.5rem', lineHeight: 1.6 }}>
           A critical error occurred while rendering the application state. Our engineering nodes have been notified.
         </p>
+        
+        <div style={{ backgroundColor: '#ffebe9', border: '1px solid #cf222e', borderRadius: '8px', padding: '1rem', color: '#cf222e', fontSize: '0.85rem', marginBottom: '2rem', textAlign: 'left', overflowX: 'auto' }}>
+          <strong>Error Details:</strong> {error.message || "An unexpected error occurred."}
+        </div>
         
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
           <button 

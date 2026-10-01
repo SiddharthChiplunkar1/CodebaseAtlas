@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { IconShieldLock } from "@tabler/icons-react";
+import GraphBackground from "@/components/ui/GraphBackground";
 
 export default function UnauthorizedPage() {
   return (
@@ -16,15 +17,7 @@ export default function UnauthorizedPage() {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Decorative background graph */}
-      <svg width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, opacity: 0.03, pointerEvents: 'none' }}>
-        <defs>
-          <pattern id="lock-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#lock-grid)" />
-      </svg>
+      <GraphBackground />
 
       <div style={{
         textAlign: 'center',
@@ -50,12 +43,9 @@ export default function UnauthorizedPage() {
         }}>
           <IconShieldLock size={40} color="#9a6700" />
         </div>
-        <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.04em', color: '#24292f' }}>
-          401
-        </h1>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem', color: '#24292f' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.02em', color: '#24292f' }}>
           Access Denied
-        </h2>
+        </h1>
         <p style={{ color: '#57606a', marginBottom: '2rem', lineHeight: 1.6 }}>
           You do not have the required permissions to view this node. Please sign in with an authorized account to continue.
         </p>

@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import GraphBackground from "@/components/ui/GraphBackground";
 
 export default function NotFound() {
   return (
@@ -14,9 +15,14 @@ export default function NotFound() {
       justifyContent: 'center',
       backgroundColor: 'var(--background)',
       color: 'var(--foreground)',
-      fontFamily: 'var(--font-sans)'
+      fontFamily: 'var(--font-sans)',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
+      <GraphBackground />
       <div style={{
+        position: 'relative',
+        zIndex: 10,
         textAlign: 'center',
         padding: '3rem',
         background: 'white',
@@ -26,12 +32,9 @@ export default function NotFound() {
         width: '90%'
       }}>
         <IconAlertTriangle size={64} color="#d2a8ff" style={{ marginBottom: '1.5rem' }} />
-        <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.04em' }}>
-          404
-        </h1>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.02em', color: '#24292f' }}>
           Node Not Found
-        </h2>
+        </h1>
         <p style={{ color: '#57606a', marginBottom: '2rem', lineHeight: 1.6 }}>
           We couldn't find the page or node you were looking for in the graph. It might have been deleted, or the path is incorrect.
         </p>

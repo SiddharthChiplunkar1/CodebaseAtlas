@@ -16,7 +16,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     
-    @Column(name = "github_id")
     private String githubId;
     
     private String username;
@@ -25,11 +24,9 @@ public class User {
     @JsonIgnore
     private String password;
     
-    @Column(name = "avatar_url")
     private String avatarUrl;
     
     @JsonIgnore
-    @Column(name = "access_token")
     private String accessToken;
 
     public User() {}

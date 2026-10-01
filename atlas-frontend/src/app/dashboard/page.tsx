@@ -18,6 +18,10 @@ export default function Dashboard() {
   // Selection State
   const [selectedNode, setSelectedNode] = useState<any>(null);
   
+  // Impact State
+  const [impactReport, setImpactReport] = useState<any>(null);
+  const [isImpactLoading, setIsImpactLoading] = useState(false);
+  
   // Repository State
   const [repos, setRepos] = useState<any[]>([]);
   const [activeRepository, setActiveRepository] = useState<any>(null);
@@ -183,40 +187,84 @@ export default function Dashboard() {
   useEffect(() => {
     if (!selectedNode) {
       // Reset opacities
-      setNodes((nds) => nds.map((n) => ({ ...n, style: { ...n.style, opacity: 1 } })));
+      setNodes((nds) => nds.map((n) => ({ ...n, style: { ...n.style, opacity: 1, boxShadow: 'none' } })));
       setEdges((eds) => eds.map((e) => ({ ...e, style: { ...e.style, opacity: 1 } })));
       return;
     }
 
-    // Highlight only the selected node and its direct neighbors
-    const neighborIds = new Set([selectedNode.id]);
-    edges.forEach(e => {
-      if (e.source === selectedNode.id) neighborIds.add(e.target);
-      if (e.target === selectedNode.id) neighborIds.add(e.source);
-    });
+    let highlightIds = new Set<string>();
 
-    setNodes((nds) => nds.map((n) => ({
-      ...n,
-      style: { ...n.style, opacity: neighborIds.has(n.id) ? 1 : 0.15 }
-    })));
+    if (impactReport) {
+      // Use Impact Report for highlighting
+      highlightIds = new Set([
+        selectedNode.id,
+        ...(impactReport.directCallers || []),
+        ...(impactReport.indirectCallers || []),
+        ...(impactReport.affectedTests || []),
+        ...(impactReport.affectedApiRoutes || [])
+      ]);
+    } else {
+      // Highlight only the selected node and its direct neighbors
+      highlightIds = new Set([selectedNode.id]);
+      edges.forEach(e => {
+        if (e.source === selectedNode.id) highlightIds.add(e.target);
+        if (e.target === selectedNode.id) highlightIds.add(e.source);
+      });
+    }
 
-    setEdges((eds) => eds.map((e) => ({
-      ...e,
-      style: { 
-        ...e.style, 
-        opacity: (e.source === selectedNode.id || e.target === selectedNode.id) ? 1 : 0.05,
-        stroke: (e.source === selectedNode.id || e.target === selectedNode.id) ? '#0969da' : '#9ca3af',
-        strokeWidth: (e.source === selectedNode.id || e.target === selectedNode.id) ? 2 : 1
-      },
-      markerEnd: { type: MarkerType.ArrowClosed, color: (e.source === selectedNode.id || e.target === selectedNode.id) ? '#0969da' : '#9ca3af' }
-    })));
-  }, [selectedNode, setNodes, setEdges]);
+    setNodes((nds) => nds.map((n) => {
+      const isHighlighted = highlightIds.has(n.id);
+      let boxShadow = 'none';
+      if (impactReport) {
+        if (n.id === selectedNode.id) boxShadow = '0 0 0 3px #0969da';
+        else if (impactReport.directCallers?.includes(n.id)) boxShadow = '0 0 0 3px #cf222e';
+        else if (impactReport.indirectCallers?.includes(n.id)) boxShadow = '0 0 0 3px #d0d7de';
+        else if (impactReport.affectedTests?.includes(n.id)) boxShadow = '0 0 0 3px #2da44e';
+        else if (impactReport.affectedApiRoutes?.includes(n.id)) boxShadow = '0 0 0 3px #8250df';
+      }
+
+      return {
+        ...n,
+        style: { ...n.style, opacity: isHighlighted ? 1 : 0.15, boxShadow }
+      };
+    }));
+
+    setEdges((eds) => eds.map((e) => {
+      const isHighlighted = highlightIds.has(e.source) && highlightIds.has(e.target);
+      return {
+        ...e,
+        style: { 
+          ...e.style, 
+          opacity: isHighlighted ? 1 : 0.05,
+          stroke: isHighlighted ? (impactReport ? '#cf222e' : '#0969da') : '#9ca3af',
+          strokeWidth: isHighlighted ? 2 : 1
+        },
+        markerEnd: { type: MarkerType.ArrowClosed, color: isHighlighted ? (impactReport ? '#cf222e' : '#0969da') : '#9ca3af' }
+      };
+    }));
+  }, [selectedNode, impactReport, setNodes, setEdges]);
 
   const handleLogout = async () => {
     try {
       await fetch("http://localhost:8080/api/v1/auth/logout", { method: "POST", credentials: "include" });
       window.location.href = "/";
     } catch (err) {}
+  };
+
+  const handleTraceImpact = async () => {
+    if (!activeRepository || !selectedNode) return;
+    setIsImpactLoading(true);
+    setImpactReport(null);
+    try {
+      const res = await fetch(`http://localhost:8080/api/v1/repos/${activeRepository.id}/impact/${selectedNode.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch impact");
+      const data = await res.json();
+      setImpactReport(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsImpactLoading(false);
+    }
   };
 
   const handleImportRepo = async (e: React.FormEvent) => {
@@ -258,6 +306,7 @@ export default function Dashboard() {
 
   const onNodeClick = useCallback((event: any, node: any) => {
     setSelectedNode(node);
+    setImpactReport(null);
   }, []);
 
   if (loading) {
@@ -457,16 +506,43 @@ export default function Dashboard() {
 
             <div style={{ marginBottom: '1.5rem', backgroundColor: '#f6f8fa', borderRadius: '8px', padding: '1rem', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '0.75rem', color: '#57606a', fontWeight: 600, marginBottom: '0.5rem' }}>RELATIONSHIPS</div>
-              <div style={{ fontSize: '0.85rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: '#cf222e' }}>↑</span> Used by dependents
-              </div>
-              <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: '#2da44e' }}>↓</span> Depends on
-              </div>
               
-              <button style={{ marginTop: '0.75rem', width: '100%', padding: '0.4rem', background: 'white', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                Trace Impact
-              </button>
+              {!impactReport ? (
+                <>
+                  <div style={{ fontSize: '0.85rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: '#cf222e' }}>↑</span> Used by dependents
+                  </div>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: '#2da44e' }}>↓</span> Depends on
+                  </div>
+                  
+                  <button onClick={handleTraceImpact} disabled={isImpactLoading} style={{ marginTop: '0.75rem', width: '100%', padding: '0.4rem', background: 'white', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, cursor: isImpactLoading ? 'not-allowed' : 'pointer', opacity: isImpactLoading ? 0.7 : 1 }}>
+                    {isImpactLoading ? 'Tracing...' : 'Trace Impact'}
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#57606a' }}>Direct Callers:</span>
+                    <span style={{ fontWeight: 600, color: '#cf222e' }}>{impactReport.directCallers?.length || 0}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#57606a' }}>Indirect Impact:</span>
+                    <span style={{ fontWeight: 600, color: '#d0d7de' }}>{impactReport.indirectCallers?.length || 0}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#57606a' }}>Affected Tests:</span>
+                    <span style={{ fontWeight: 600, color: '#2da44e' }}>{impactReport.affectedTests?.length || 0}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#57606a' }}>Affected API Routes:</span>
+                    <span style={{ fontWeight: 600, color: '#8250df' }}>{impactReport.affectedApiRoutes?.length || 0}</span>
+                  </div>
+                  <button onClick={() => setImpactReport(null)} style={{ marginTop: '0.5rem', width: '100%', padding: '0.4rem', background: 'white', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                    Clear Impact
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ backgroundColor: '#fcfaff', borderRadius: '8px', padding: '1rem', border: '1px solid #e1d4ff' }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { IconLogout, IconMap2, IconSearch, IconNetwork, IconCode, IconCpu, IconBrandOpenai, IconSparkles, IconX, IconBrandGithub, IconPlus } from "@tabler/icons-react";
+import { IconLogout, IconMap2, IconSearch, IconNetwork, IconCode, IconCpu, IconBrandOpenai, IconSparkles, IconX, IconBrandGithub, IconPlus, IconTrash } from "@tabler/icons-react";
 import * as d3 from 'd3-force';
 import ReactFlow, { Background, BackgroundVariant, Controls, MiniMap, useNodesState, useEdgesState, MarkerType } from "reactflow";
 import "reactflow/dist/style.css";
@@ -52,6 +52,10 @@ export default function Dashboard() {
   const [repoFullName, setRepoFullName] = useState("");
   const [githubToken, setGithubToken] = useState("");
   const [importError, setImportError] = useState("");
+
+  // Delete Repo State
+  const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+  const [hoveredRepoId, setHoveredRepoId] = useState<string | null>(null);
 
   // 1. Fetch User & Repos
   useEffect(() => {
@@ -363,6 +367,31 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteRepo = async (e: React.MouseEvent, repoId: string, repoName: string) => {
+    e.stopPropagation(); // prevent triggering setActiveRepository
+    if (!confirm(`Delete "${repoName}"?\n\nThis will permanently remove all parsed nodes and edges.`)) return;
+    setDeletingRepoId(repoId);
+    try {
+      const res = await fetch(`http://localhost:8080/api/v1/repos/${repoId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      setRepos(prev => prev.filter(r => r.id !== repoId));
+      if (activeRepository?.id === repoId) {
+        setActiveRepository(null);
+        setNodes([]);
+        setEdges([]);
+        setSelectedNode(null);
+        setImpactReport(null);
+      }
+    } catch (err) {
+      alert("Failed to delete repository. Please try again.");
+    } finally {
+      setDeletingRepoId(null);
+    }
+  };
+
   const onNodeClick = useCallback((event: any, node: any) => {
     setSelectedNode(node);
     setImpactReport(null);
@@ -403,22 +432,50 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.5rem' }}>
             {repos.map(r => (
-              <button 
-                key={r.id} 
-                onClick={() => setActiveRepository(r)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', borderRadius: '4px', fontSize: '0.85rem', 
-                  backgroundColor: activeRepository?.id === r.id ? '#e1effe' : 'transparent',
-                  color: activeRepository?.id === r.id ? '#1e429f' : '#57606a',
-                  border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: activeRepository?.id === r.id ? 600 : 400
-                }}
+              <div
+                key={r.id}
+                onMouseEnter={() => setHoveredRepoId(r.id)}
+                onMouseLeave={() => setHoveredRepoId(null)}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <IconCode size={16} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{r.name}</span>
-                </div>
-                {r.status === 'PENDING' && <span style={{ fontSize: '0.65rem', backgroundColor: '#fff8c5', color: '#9a6700', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>SYNCING</span>}
-                {r.status === 'FAILED' && <span style={{ fontSize: '0.65rem', backgroundColor: '#ffebe9', color: '#cf222e', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>ERROR</span>}
-              </button>
+                <button 
+                  onClick={() => setActiveRepository(r)}
+                  style={{ 
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', paddingRight: hoveredRepoId === r.id ? '2rem' : '0.5rem', borderRadius: '4px', fontSize: '0.85rem', 
+                    backgroundColor: activeRepository?.id === r.id ? '#e1effe' : 'transparent',
+                    color: activeRepository?.id === r.id ? '#1e429f' : '#57606a',
+                    border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: activeRepository?.id === r.id ? 600 : 400,
+                    transition: 'background-color 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                    <IconCode size={16} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                    {r.status === 'PENDING' && <span style={{ fontSize: '0.65rem', backgroundColor: '#fff8c5', color: '#9a6700', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>SYNCING</span>}
+                    {r.status === 'FAILED' && <span style={{ fontSize: '0.65rem', backgroundColor: '#ffebe9', color: '#cf222e', padding: '0.1rem 0.3rem', borderRadius: '10px', fontWeight: 600 }}>ERROR</span>}
+                  </div>
+                </button>
+
+                {/* Delete button — appears on hover */}
+                {hoveredRepoId === r.id && (
+                  <button
+                    onClick={(e) => handleDeleteRepo(e, r.id, r.name)}
+                    disabled={deletingRepoId === r.id}
+                    title="Delete repository"
+                    style={{
+                      position: 'absolute', right: '0.25rem',
+                      background: 'none', border: 'none', cursor: deletingRepoId === r.id ? 'not-allowed' : 'pointer',
+                      color: '#cf222e', padding: '0.25rem', borderRadius: '4px', display: 'flex', alignItems: 'center',
+                      opacity: deletingRepoId === r.id ? 0.5 : 1,
+                      transition: 'opacity 0.15s ease'
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
 

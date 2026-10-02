@@ -13,4 +13,6 @@ public class NodeDto {
     private String type;
     private String filePath;
     private String language;
+    private Integer startLine;
+    private Integer endLine;
 }

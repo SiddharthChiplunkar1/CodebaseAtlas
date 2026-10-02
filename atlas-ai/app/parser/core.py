@@ -48,6 +48,71 @@ QUERIES = {
     """,
 }
 
+# Annotation patterns that classify a Java class as a ROUTE (controller/endpoint)
+_ROUTE_ANNOTATIONS = re.compile(
+    r"@(RestController|Controller|RequestMapping|FeignClient)\b"
+)
+
+# Annotation or name conventions that classify a class as a TEST
+_TEST_ANNOTATIONS = re.compile(r"@(Test|ExtendWith|RunWith|SpringBootTest)\b")
+_TEST_NAME_SUFFIXES = ("Test", "Tests", "Spec", "IT", "ITCase")
+
+# Inheritance / implementation patterns for Java class declarations
+_EXTENDS_RE = re.compile(r"\bclass\s+\w+.*?\bextends\s+(\w+)")
+_IMPLEMENTS_RE = re.compile(r"\bclass\s+\w+.*?\bimplements\s+([\w\s,]+?)(?:\{|$)")
+
+
+def _refine_java_class_type(entity: Dict[str, Any]) -> None:
+    """
+    Post-process a parsed Java CLASS entity and upgrade its type to ROUTE or
+    TEST when annotations or naming conventions indicate it.
+    """
+    if entity["type"] != "CLASS":
+        return
+    sig = entity.get("signature", "")
+    name = entity.get("name", "")
+
+    if _ROUTE_ANNOTATIONS.search(sig):
+        entity["type"] = "ROUTE"
+    elif _TEST_ANNOTATIONS.search(sig) or name.endswith(_TEST_NAME_SUFFIXES):
+        entity["type"] = "TEST"
+
+
+def _extract_inheritance_edges(
+    nodes: List[Dict[str, Any]], declarations: Dict[str, Dict[str, Any]]
+) -> List[Dict[str, str]]:
+    """
+    For Java CLASS nodes, extract EXTENDS and IMPLEMENTS relationships
+    from the raw class declaration text.
+    """
+    edges: List[Dict[str, str]] = []
+    for node in nodes:
+        if node["type"] not in ("CLASS", "ROUTE", "TEST"):
+            continue
+        sig = node.get("signature", "")
+        # EXTENDS
+        m = _EXTENDS_RE.search(sig)
+        if m:
+            parent_name = m.group(1).strip()
+            if parent_name in declarations and declarations[parent_name] is not node:
+                edges.append({
+                    "from_id": node["id"],
+                    "to_id": declarations[parent_name]["id"],
+                    "edge_type": "extends",
+                })
+        # IMPLEMENTS
+        m = _IMPLEMENTS_RE.search(sig)
+        if m:
+            for iface_name in m.group(1).split(","):
+                iface_name = iface_name.strip()
+                if iface_name in declarations and declarations[iface_name] is not node:
+                    edges.append({
+                        "from_id": node["id"],
+                        "to_id": declarations[iface_name]["id"],
+                        "edge_type": "implements",
+                    })
+    return edges
+
 
 class AstParser:
     def __init__(self) -> None:
@@ -75,8 +140,6 @@ class AstParser:
                 entity_type = capture_name.split(".")[0].upper()
                 if entity_type == "FUNC":
                     entity_type = "FUNCTION"
-                if entity_type == "INTERFACE":
-                    entity_type = "CLASS"
                 entities[node.id] = {
                     "type": entity_type,
                     "start_line": node.start_point[0] + 1,
@@ -95,22 +158,34 @@ class AstParser:
                         "utf-8", errors="replace"
                     )
 
-        return list(entities.values())
+        result = list(entities.values())
+
+        # Post-process: refine Java CLASS types to ROUTE/TEST where applicable
+        if language == "java":
+            for entity in result:
+                _refine_java_class_type(entity)
+
+        return result
 
     def parse_file_graph(self, repo_id: str, file_path: str, content: str, language: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
         nodes = self.parse_code(file_path, content, language)
         for node in nodes:
             node["id"] = f"{repo_id}::{file_path}::{node['name']}:{node['start_line']}"
 
-        # Build only edges whose source and target declarations are known.
+        # Same-file CALLS edges
         edges: List[Dict[str, str]] = []
         declarations = {node["name"]: node for node in nodes if node["name"] != "unknown"}
         for caller in nodes:
             for name, callee in declarations.items():
                 if caller is callee:
                     continue
-                if re.search(rf"(?<![\w.]){re.escape(name)}\s*\(", caller["signature"]):
+                if re.search(rf"(?<![.\w]){re.escape(name)}\s*\(", caller["signature"]):
                     edges.append({"from_id": caller["id"], "to_id": callee["id"], "edge_type": "calls"})
+
+        # EXTENDS / IMPLEMENTS edges (Java only)
+        if language == "java":
+            edges.extend(_extract_inheritance_edges(nodes, declarations))
+
         return nodes, edges
 
     def parse_repository(self, repo_id: str, repo_path: str, skip_directories: Iterable[str] = ()) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]], int]:
@@ -137,4 +212,44 @@ class AstParser:
                 total_files += 1
             except (OSError, UnicodeDecodeError) as exc:
                 logger.warning("Skipping unreadable source file %s: %s", path, exc)
+
+        # ── Cross-file CALLS detection ──────────────────────────────────────
+        # After all files are parsed, scan every symbol's signature for
+        # references to symbols declared in OTHER files. This captures the
+        # Spring DI pattern where Service A injects Service B via constructor.
+        global_declarations: Dict[str, Dict[str, Any]] = {}
+        for node in nodes:
+            name = node.get("name", "unknown")
+            if name != "unknown":
+                # Last-write wins for duplicate names; good enough for cross-file
+                global_declarations[name] = node
+
+        seen_cross_edges: set = set()
+        cross_file_edges: List[Dict[str, str]] = []
+
+        for caller in nodes:
+            caller_file = caller["file_path"]
+            sig = caller.get("signature", "")
+            for callee_name, callee in global_declarations.items():
+                if callee["file_path"] == caller_file:
+                    continue  # already handled by same-file pass
+                if callee is caller:
+                    continue
+                # Match: ClassName( or ClassName<  or ClassName.method or : ClassName
+                if re.search(rf"(?<![.\w]){re.escape(callee_name)}(?:\s*[(<.]|\s+\w)", sig):
+                    key = (caller["id"], callee["id"])
+                    if key not in seen_cross_edges:
+                        seen_cross_edges.add(key)
+                        cross_file_edges.append({
+                            "from_id": caller["id"],
+                            "to_id": callee["id"],
+                            "edge_type": "calls",
+                        })
+
+        edges.extend(cross_file_edges)
+        logger.info(
+            "Parsed repo %s: %d nodes, %d same-file edges, %d cross-file edges across %d files",
+            repo_id, len(nodes), len(edges) - len(cross_file_edges),
+            len(cross_file_edges), total_files,
+        )
         return nodes, edges, total_files

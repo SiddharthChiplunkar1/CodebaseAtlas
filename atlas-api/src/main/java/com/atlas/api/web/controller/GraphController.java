@@ -33,6 +33,8 @@ public class GraphController {
                         .type(node.getType().name())
                         .filePath(node.getFilePath())
                         .language(node.getLanguage())
+                        .startLine(node.getStartLine())
+                        .endLine(node.getEndLine())
                         .build()).collect(Collectors.toList()))
                 .edges(data.getCodeEdges().stream().map(edge -> EdgeDto.builder()
                         .source(edge.getFromNodeId())

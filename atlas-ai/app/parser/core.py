@@ -75,8 +75,6 @@ class AstParser:
                 entity_type = capture_name.split(".")[0].upper()
                 if entity_type == "FUNC":
                     entity_type = "FUNCTION"
-                if entity_type == "INTERFACE":
-                    entity_type = "CLASS"
                 entities[node.id] = {
                     "type": entity_type,
                     "start_line": node.start_point[0] + 1,

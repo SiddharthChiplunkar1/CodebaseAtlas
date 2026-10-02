@@ -144,7 +144,7 @@ class AstParser:
                     "type": entity_type,
                     "start_line": node.start_point[0] + 1,
                     "end_line": node.end_point[0] + 1,
-                    "signature": source[node.start_byte:node.end_byte].decode("utf-8", errors="replace"),
+                    "signature": source[node.start_byte:node.end_byte].decode("utf-8", errors="replace").replace("\x00", ""),
                     "file_path": file_path,
                     "language": language,
                     "name": "unknown",
@@ -156,7 +156,7 @@ class AstParser:
                 if parent and parent.id in entities:
                     entities[parent.id]["name"] = source[node.start_byte:node.end_byte].decode(
                         "utf-8", errors="replace"
-                    )
+                    ).replace("\x00", "")
 
         result = list(entities.values())
 

@@ -24,6 +24,10 @@ const EDGE_STYLES: Record<string, { stroke: string; strokeWidth: number; strokeD
   IMPORTS:    { stroke: "#fbbf24", strokeWidth: 1, strokeDasharray: "3 3", label: "imports" },
 };
 
+// Stable empty maps — required to silence ReactFlow error#002
+const RF_NODE_TYPES = {};
+const RF_EDGE_TYPES = {};
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -577,6 +581,8 @@ export default function Dashboard() {
                   onEdgesChange={onEdgesChange}
                   onNodeClick={onNodeClick}
                   onPaneClick={() => setSelectedNode(null)}
+                  nodeTypes={RF_NODE_TYPES}
+                  edgeTypes={RF_EDGE_TYPES}
                   fitView
                   attributionPosition="bottom-right"
                 >
